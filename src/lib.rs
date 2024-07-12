@@ -3,28 +3,22 @@
 use std::{marker::PhantomData, ops::Range};
 use vers_vecs::EliasFanoVec;
 
-/// A trait for hashing that preserves the locality/ordering of hashed objects.
-pub trait LocalityHash: Clone + PartialOrd + Ord {
-    fn hash(&self) -> u64;
-}
-
 /// The Grafite Range Filter.
-pub struct RangeFilter<T: LocalityHash> {
+pub struct RangeFilter<T, H: Fn(&T) -> u64> {
     ef: EliasFanoVec,
+    hasher: H,
     _phantom: PhantomData<T>,
 }
 
-impl<T: LocalityHash> RangeFilter<T> {
+impl<T, H: Fn(&T) -> u64> RangeFilter<T, H> {
     /// Creates a new `RangeFilter` given a slice of values.
-    pub fn new(values: &[T], reduced_universe_size: u64) -> Self {
-        let mut hashes: Vec<u64> = values
-            .iter()
-            .map(|x| LocalityHash::hash(x) % reduced_universe_size)
-            .collect();
+    pub fn new(values: &[T], hasher: H) -> Self {
+        let mut hashes: Vec<u64> = values.iter().map(&hasher).collect();
         hashes.sort_unstable();
 
         Self {
             ef: EliasFanoVec::from_slice(&hashes),
+            hasher,
             _phantom: PhantomData,
         }
     }
@@ -41,8 +35,8 @@ impl<T: LocalityHash> RangeFilter<T> {
 
     /// Checks if there are any elements within the given range among the original input set.
     pub fn query(&self, range: Range<T>) -> bool {
-        let start_hash = range.start.hash();
-        let end_hash = range.end.hash();
+        let start_hash = (self.hasher)(&range.start);
+        let end_hash = (self.hasher)(&range.end);
 
         // If the start hash is greater than the end hash, then the range has wrapped around due to
         // the reduced universe. Thus we can just check the min and max hashes to see if there is an
