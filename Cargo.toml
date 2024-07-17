@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-vers-vecs = "1.4.0"
+vers-vecs = "1.4"
