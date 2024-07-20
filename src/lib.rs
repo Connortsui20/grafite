@@ -1,117 +1,25 @@
 //! TODO docs.
 
-use rand::prelude::*;
+mod hash;
+mod utils;
+
+use crate::hash::*;
 use std::ops::Range;
 use vers_vecs::EliasFanoVec;
 
-#[derive(Clone, Copy)]
-pub struct GrafiteHasher {
-    /// The first arbitrary constant.
-    c1: u64,
-    /// The second arbitrary constant.
-    c2: u64,
-    /// A large prime.
-    p: u64,
-    /// The size of the reduced universe.
-    r: u64,
-}
-
-/// TODO docs.
-fn is_prime(n: u64) -> bool {
-    match n {
-        0 | 1 => false,
-        2 => true,
-        _ if n % 2 == 0 => false,
-        _ => !(1..)
-            .map(|x| 2 * x + 1)
-            .take_while(|&x| x * x <= n)
-            .any(|factor| n % factor == 0),
-    }
-}
-
-/// Generates a random number until it generates a prime, and then returns that prime number.
-fn gen_prime() -> u64 {
-    let mut rng = rand::thread_rng();
-
-    loop {
-        let attempt: u32 = rng.gen();
-        dbg!(attempt);
-
-        if is_prime(attempt as u64) {
-            println!("Found prime {}", attempt);
-            return attempt as u64;
-        }
-    }
-}
-
-/// TODO docs.
-impl GrafiteHasher {
-    /// Creates a new hash function. TODO more docs.
-    pub fn new(num_elements: usize, max_interval: u64, epsilon: f64) -> Self {
-        assert!(
-            epsilon < 0.99,
-            "Why are you trying to create a false positive rate of above 0.99?"
-        );
-        assert!(epsilon > 0.0, "epsilon must be greater than 0.0");
-        assert!(
-            max_interval <= Self::max_range_interval(num_elements, epsilon),
-            "The input maximum interval is impossible given the other parameters"
-        );
-
-        let upper = (num_elements as u64)
-            .checked_mul(max_interval)
-            .expect("We should not have any overflow on calculating the reduced universe size.");
-
-        let lower = (1.0 / epsilon).floor() as u64;
-
-        let reduced_universe_size = upper
-            .checked_mul(lower)
-            .expect("We should not have any overflow on calculating the reduced universe size.");
-
-        dbg!(upper, lower, reduced_universe_size);
-
-        let mut rng = rand::thread_rng();
-
-        Self {
-            c1: rng.gen(),
-            c2: rng.gen(),
-            p: gen_prime(), // TODO
-            r: reduced_universe_size,
-        }
-    }
-
-    /// TODO docs.
-    fn max_range_interval(num_elements: usize, epsilon: f64) -> u64 {
-        ((u64::MAX as f64) * epsilon) as u64 / num_elements as u64
-    }
-
-    // A hash function taken from a pairwise-independent family.
-    fn inner_hash(&self, x: u64) -> u64 {
-        ((self.c1 * x + self.c2) % self.p) % self.r
-    }
-
-    /// A hash function that preserves locality and ordering modulo the reduced universe of integer
-    /// items.
-    pub fn hash(&self, x: u64) -> u64 {
-        let inner = x / self.r;
-        let q = self.inner_hash(inner);
-
-        (q + x) % self.r
-    }
-}
-
 /// The Grafite Range Filter.
+#[derive(Debug, Clone)]
 pub struct RangeFilter {
-    /// A succinct encoding of a monotonic non-decreasing sequence of hash values.
-    ef: EliasFanoVec,
     /// The hash function used to encode the hash values.
-    hasher: GrafiteHasher,
+    pub hasher: OrderPreservingHasher,
+    /// A succinct encoding of a monotonic non-decreasing sequence of hash values.
+    pub ef: EliasFanoVec,
 }
 
 /// The `RangeFilter` must be built on items that are able to be turned into a 64-bit integer.
 impl RangeFilter {
     /// Creates a new `RangeFilter` given a slice of values.
-    pub fn new<I>(values: I, hasher: GrafiteHasher) -> Self
+    pub fn new<I>(values: I, hasher: OrderPreservingHasher) -> Self
     where
         I: Iterator<Item = u64>,
     {
@@ -122,11 +30,11 @@ impl RangeFilter {
         hashes.sort_unstable();
         hashes.dedup();
 
-        assert!(hashes[hashes.len() - 1] < hasher.r);
+        assert!(hashes[hashes.len() - 1] < hasher.reduced_universe());
 
         Self {
-            ef: EliasFanoVec::from_slice(&hashes),
             hasher,
+            ef: EliasFanoVec::from_slice(&hashes),
         }
     }
 
@@ -168,17 +76,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_is_prime() {
-        let primes = [2, 3, 5, 7, 11, 13, 17, 19];
-
-        assert!(primes.iter().copied().all(is_prime));
-    }
-
-    #[test]
     fn test_basic() {
         let values = [1, 2, 3, 7, 8, 9, 15, 20];
 
-        let hasher = GrafiteHasher::new(values.len(), 20, 0.01);
+        let hasher = OrderPreservingHasher::new(values.len(), 20, 0.01);
 
         let rf = RangeFilter::new(values.iter().copied(), hasher);
 
