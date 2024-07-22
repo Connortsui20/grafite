@@ -1,9 +1,12 @@
 //! This module contains the [`OrderPreservingHasher`] type, which is a helper struct for defining a
-//! hash function that preserves order modulo a reduced universe.
+//! hash function that preserves integer key ordering modulo a reduced universe.
 //!
 //! See the documentation for [`OrderPreservingHasher`] for more information.
 
 use crate::utils::*;
+
+/// The default universe size for 64-bit unsigned integers, which is [`u64::MAX`].
+pub const MAX_UNIVERSE_SIZE: u64 = u64::MAX;
 
 /// TODO docs.
 #[derive(Debug, Clone, Copy)]
@@ -20,23 +23,25 @@ pub struct OrderPreservingHasher {
 
 /// TODO docs.
 impl OrderPreservingHasher {
-    /// Creates a new hash function.
+    /// Creates a new hash function helper struct with specific parameters and guarantees.
     ///
     /// TODO more docs.
     ///
-    /// # Panics
-    ///
-    /// This function will panic if `epsilon` is not between `0.0` or `1.0`, or if the
-    /// `max_interval` parameter is too large.
-    pub fn new(num_elements: usize, max_interval: u64, epsilon: f64) -> Self {
-        assert!(
-            0.0 < epsilon && epsilon < 1.0,
-            "The false positive rate (epsilon) must be between 0.0 and 1.0"
-        );
-        assert!(
-            max_interval <= Self::max_range_interval(num_elements, epsilon),
-            "The input maximum interval is impossible given the other parameters"
-        );
+    /// See Section 3 of the original paper for more information on how the hash function works and
+    /// behaves.
+    pub fn new(
+        num_elements: usize,
+        universe_size: u64,
+        epsilon: f64,
+        max_interval: u64,
+    ) -> Option<Self> {
+        if epsilon <= 0.0 || 1.0 <= epsilon {
+            return None;
+        }
+
+        if max_interval > Self::max_range_interval(num_elements, universe_size, epsilon) {
+            return None;
+        }
 
         let upper = (num_elements as u64)
             .checked_mul(max_interval)
@@ -47,12 +52,39 @@ impl OrderPreservingHasher {
             .checked_mul(lower)
             .expect("We should not have any overflow on calculating the reduced universe size.");
 
-        Self {
-            c1: gen_random(),
-            c2: gen_random(),
-            p: gen_prime(), // TODO
+        // Generate `p > r`.
+        let p = gen_prime(1 + reduced_universe_size..MAX_UNIVERSE_SIZE);
+
+        // Generate two numbers `c1, c2 < p` with `c1 != 0`.
+        let c1 = gen_random(1..p);
+        let c2 = gen_random(0..p);
+
+        Some(Self {
+            c1,
+            c2,
+            p,
             r: reduced_universe_size,
-        }
+        })
+    }
+
+    /// Creates a new hash function helper struct where the caller can pass in a custom reduced
+    /// universe size.
+    ///
+    /// The [`new`] method will calculate a good reduced universe size depending on the number of
+    /// input items, the necessary false positive rate and maximum query interval, whereas this
+    /// method will use whatever reduced universe size is passed in.
+    ///
+    /// The caller must take care to ensure `r` is optimal for their expected workloads.
+    ///
+    /// See the [`new`] method for more information on how the hash function works and behaves.
+    pub fn new_with_reduced(r: u64) -> Self {
+        let p = gen_prime(1 + r..MAX_UNIVERSE_SIZE);
+
+        // Generate two numbers `c1, c2 < p` with `c1 != 0`.
+        let c1 = gen_random(1..p);
+        let c2 = gen_random(0..p);
+
+        Self { c1, c2, p, r }
     }
 
     // A hash function taken from a pairwise-independent family.
@@ -77,8 +109,13 @@ impl OrderPreservingHasher {
     /// Returns the maximum range interval given the number of elements in the set and the false
     /// positive rate.
     ///
-    /// TODO docs.
-    fn max_range_interval(num_elements: usize, epsilon: f64) -> u64 {
-        ((u64::MAX as f64) * epsilon) as u64 / num_elements as u64
+    /// The maximum range interval is defined as `(u * e) / n`, where the variables are defined as:
+    /// -   `u`: The size of the universe of keys
+    /// -   `e`: The false positive rate `epsilon`
+    /// -   `n`: The number of elements in the input set
+    ///
+    /// If the universe size is not known, [`MAX_UNIVERSE_SIZE`] should be used.
+    fn max_range_interval(num_elements: usize, universe_size: u64, epsilon: f64) -> u64 {
+        ((universe_size as f64) * epsilon) as u64 / num_elements as u64
     }
 }
