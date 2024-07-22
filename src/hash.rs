@@ -5,7 +5,7 @@
 
 use crate::utils::*;
 
-/// The default universe size for 64-bit unsigned integers, which is [`u64::MAX`].
+/// The default universe size for 64-bit unsigned integers, which is equivalent to [`u64::MAX`].
 pub const MAX_UNIVERSE_SIZE: u64 = u64::MAX;
 
 /// TODO docs.
@@ -29,17 +29,12 @@ impl OrderPreservingHasher {
     ///
     /// See Section 3 of the original paper for more information on how the hash function works and
     /// behaves.
-    pub fn new(
-        num_elements: usize,
-        universe_size: u64,
-        epsilon: f64,
-        max_interval: u64,
-    ) -> Option<Self> {
+    pub fn new(num_elements: usize, epsilon: f64, max_interval: u64) -> Option<Self> {
         if epsilon <= 0.0 || 1.0 <= epsilon {
             return None;
         }
 
-        if max_interval > Self::max_range_interval(num_elements, universe_size, epsilon) {
+        if max_interval > Self::max_range_interval(MAX_UNIVERSE_SIZE, num_elements, epsilon) {
             return None;
         }
 
@@ -70,13 +65,14 @@ impl OrderPreservingHasher {
     /// Creates a new hash function helper struct where the caller can pass in a custom reduced
     /// universe size.
     ///
-    /// The [`new`] method will calculate a good reduced universe size depending on the number of
-    /// input items, the necessary false positive rate and maximum query interval, whereas this
+    /// The [`Self::new`] method will calculate a good reduced universe size depending on the number
+    /// of input items, the necessary false positive rate and maximum query interval, whereas this
     /// method will use whatever reduced universe size is passed in.
     ///
     /// The caller must take care to ensure `r` is optimal for their expected workloads.
     ///
-    /// See the [`new`] method for more information on how the hash function works and behaves.
+    /// See the [`Self::new`] method for more information on how the hash function works and
+    /// behaves.
     pub fn new_with_reduced(r: u64) -> Self {
         let p = gen_prime(1 + r..MAX_UNIVERSE_SIZE);
 
@@ -115,7 +111,7 @@ impl OrderPreservingHasher {
     /// -   `n`: The number of elements in the input set
     ///
     /// If the universe size is not known, [`MAX_UNIVERSE_SIZE`] should be used.
-    fn max_range_interval(num_elements: usize, universe_size: u64, epsilon: f64) -> u64 {
+    fn max_range_interval(universe_size: u64, num_elements: usize, epsilon: f64) -> u64 {
         ((universe_size as f64) * epsilon) as u64 / num_elements as u64
     }
 }

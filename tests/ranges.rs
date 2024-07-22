@@ -4,7 +4,7 @@ use grafite::{hash::OrderPreservingHasher, RangeFilter};
 fn test_basic() {
     let values = [1, 2, 3, 7, 8, 9, 15, 20];
 
-    let hasher = OrderPreservingHasher::new(values.len(), 20, 0.01);
+    let hasher = OrderPreservingHasher::new(values.len(), 0.01, 20).unwrap();
 
     let rf = RangeFilter::new(values.iter().copied(), hasher);
 
