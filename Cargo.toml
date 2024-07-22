@@ -1,9 +1,16 @@
 [package]
 name = "grafite"
+description = "The Grafite Range Filter."
 version = "0.1.0"
 edition = "2021"
+authors = ["Connor Tsui"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Connortsui20/grafite"
+keywords = ["filter", "range", "bloom", "search", "succinct"]
+categories = ["database-implementations", "data-structures", "algorithms"]
 
 [dependencies]
-miller_rabin = "1.1.1"
-rand = "0.8.5"
+miller_rabin = "1.1"
+rand = "0.8"
 vers-vecs = "1.4"

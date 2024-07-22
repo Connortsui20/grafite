@@ -13,7 +13,7 @@ The Grafite data structure relies on the Elias-Fano encoding of non-decreasing i
 # Examples
 
 ```rust
-# use grafite::{OrderPreservingHasher, RangeFilter};
+use grafite::{OrderPreservingHasher, RangeFilter};
 
 let values = [1, 2, 3, 7, 8, 9, 15, 20];
 
