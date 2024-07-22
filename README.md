@@ -13,24 +13,30 @@ The Grafite data structure relies on the Elias-Fano encoding of non-decreasing i
 # Examples
 
 ```rust
+# use grafite::{OrderPreservingHasher, RangeFilter};
+
 let values = [1, 2, 3, 7, 8, 9, 15, 20];
 
 let epsilon = 0.01;
 let max_query_range = 20;
-let hasher = OrderPreservingHasher::new(values.len(), max_query_range, epsilon).expect("TODO");
+let hasher = OrderPreservingHasher::new(values.len(), epsilon, max_query_range)
+    .expect("The input parameters should be valid");
 
 let rf = RangeFilter::new(values.iter().copied(), hasher);
 
 // If there are any values in the range, it will return `true`.
+assert!(rf.query(..));
+assert!(rf.query(..42));
+assert!(rf.query(10..));
 assert!(rf.query(0..20));
 
 // Start is inclusive.
 assert!(rf.query(3..5));
 assert!(rf.query(9..16));
 
-// End is exclusive. Note that false positives are possible depending on `epsilon`.
+// End is exclusive. Note that false positives are possible depending on the input `epsilon`.
 assert!(!rf.query(10..15));
-assert!(rf.query(10..16));
+assert!(rf.query(10..=15));
 ```
 
 # TODO

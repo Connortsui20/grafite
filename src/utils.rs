@@ -1,7 +1,10 @@
 //! Utility and helper functions for hashing and prime number generation.
 
-use std::ops::Range;
 use rand::prelude::*;
+use std::ops::Range;
+
+/// The number of iterations to run the Miller-Rabin primality test.
+const ITERATIONS: usize = 128;
 
 /// Generates a random 64-bit number that is within the input `range`.
 ///
@@ -12,7 +15,8 @@ pub fn gen_random(range: Range<u64>) -> u64 {
     rand::thread_rng().gen_range(range)
 }
 
-/// Checks if a number is prime.
+/// Deterministically checks if a number is prime.
+#[allow(dead_code)]
 pub fn is_prime(n: u64) -> bool {
     match n {
         0 | 1 => false,
@@ -25,10 +29,11 @@ pub fn is_prime(n: u64) -> bool {
     }
 }
 
-/// Generates a random 64-bit prime number that is within the input range.
+/// Generates a random 64-bit (potentially) prime number that is within the input range.
 ///
-/// This function will generate a random number until it generates a prime, and then it will return
-/// that prime number.
+/// This function will generate a random number and then use the Miller-Rabin primality test to
+/// check if the number generated is prime. If it returns `true`, then it will return that number as
+/// the candidate prime number. Otherwise, it will generate a new random number and try again.
 ///
 /// # Panics
 ///
@@ -39,7 +44,7 @@ pub fn gen_prime(range: Range<u64>) -> u64 {
     loop {
         let attempt = rng.gen_range(range.clone());
 
-        if is_prime(attempt) {
+        if miller_rabin::is_prime(&attempt, ITERATIONS) {
             return attempt;
         }
     }

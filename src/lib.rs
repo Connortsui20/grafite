@@ -5,7 +5,7 @@ pub use crate::hash::OrderPreservingHasher;
 
 mod utils;
 
-use std::ops::Range;
+use std::ops::RangeBounds;
 use vers_vecs::EliasFanoVec;
 
 /// The Grafite Range Filter.
@@ -13,7 +13,7 @@ use vers_vecs::EliasFanoVec;
 pub struct RangeFilter {
     /// The hash function used to encode the hash values.
     pub hasher: OrderPreservingHasher,
-    /// A succinct encoding of a monotonic non-decreasing sequence of hash values.
+    /// A succinct encoding of a non-decreasing sequence of integer hash values.
     pub ef: EliasFanoVec,
 }
 
@@ -50,9 +50,24 @@ impl RangeFilter {
     }
 
     /// Checks if there are any elements within the given range among the original input set.
-    pub fn query(&self, range: Range<u64>) -> bool {
-        let start_hash = self.hasher.hash(range.start);
-        let end_hash = self.hasher.hash(range.end - 1);
+    pub fn query<R>(&self, range: R) -> bool
+    where
+        R: RangeBounds<u64>,
+    {
+        let start = match range.start_bound() {
+            std::ops::Bound::Included(&i) => i,
+            std::ops::Bound::Excluded(_) => unreachable!("Somehow had an exclusive start bound"),
+            std::ops::Bound::Unbounded => 0,
+        };
+
+        let end = match range.end_bound() {
+            std::ops::Bound::Included(&i) => i,
+            std::ops::Bound::Excluded(&e) => e - 1,
+            std::ops::Bound::Unbounded => u64::MAX,
+        };
+
+        let start_hash = self.hasher.hash(start);
+        let end_hash = self.hasher.hash(end);
 
         // If the start hash is greater than the end hash, then the range has wrapped around due to
         // the reduced universe. Thus we can just check the min and max hashes to see if there is an

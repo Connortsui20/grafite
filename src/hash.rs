@@ -85,7 +85,7 @@ impl OrderPreservingHasher {
 
     // A hash function taken from a pairwise-independent family.
     fn inner_hash(&self, x: u64) -> u64 {
-        ((self.c1 * x + self.c2) % self.p) % self.r
+        ((self.c1.overflowing_mul(x).0.overflowing_add(self.c2)).0 % self.p) % self.r
     }
 
     /// A hash function that preserves locality and ordering modulo the reduced universe of integer
@@ -94,7 +94,7 @@ impl OrderPreservingHasher {
         let inner = x / self.r;
         let q = self.inner_hash(inner);
 
-        (q + x) % self.r
+        (q.overflowing_add(x).0) % self.r
     }
 
     /// Returns the size of the reduced universe that the hash function maps to.
@@ -111,7 +111,16 @@ impl OrderPreservingHasher {
     /// -   `n`: The number of elements in the input set
     ///
     /// If the universe size is not known, [`MAX_UNIVERSE_SIZE`] should be used.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `epsilon` is not in between `0.0` and `1.0`.
     fn max_range_interval(universe_size: u64, num_elements: usize, epsilon: f64) -> u64 {
+        assert!(
+            0.0 < epsilon && epsilon < 1.0,
+            "epsilon must be between 0.0 and 1.0"
+        );
+
         ((universe_size as f64) * epsilon) as u64 / num_elements as u64
     }
 }
