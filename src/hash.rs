@@ -8,7 +8,27 @@ use crate::utils::*;
 /// The default universe size for 64-bit unsigned integers, which is equivalent to [`u64::MAX`].
 pub const MAX_UNIVERSE_SIZE: u64 = u64::MAX;
 
-/// TODO docs.
+/// An error type representing if the parameters of an [`OrderPreservingHasher`] are invalid for any
+/// reason.
+#[derive(Debug, Clone, Copy)]
+pub enum ParamError {
+    /// If the input `epsilon` is not strictly in between `0.0` and `1.0`.
+    InvalidEpsilon,
+    /// If the maximum interval is too large.
+    InvalidMaxInterval,
+    /// If overflow occurs in the calculation of the reduced universe size.
+    Overflow,
+}
+
+/// A struct to help manage the order-preserving hash function used for the Grafite range filter.
+///
+/// The intended use of this struct is simply to be constructed, moved, and stored into the
+/// [`RangeFilter`](crate::RangeFilter) type.
+///
+/// Instead of manually calculating carrying around the constants for the hash function, we can
+/// group them into a struct and use a [`Self::hash`] method to hash all of the input values.
+///
+/// See the [`Self::new`] and [`Self::hash`] methods for more information.
 #[derive(Debug, Clone, Copy)]
 pub struct OrderPreservingHasher {
     /// The first arbitrary constant.
@@ -21,31 +41,30 @@ pub struct OrderPreservingHasher {
     r: u64,
 }
 
-/// TODO docs.
 impl OrderPreservingHasher {
     /// Creates a new hash function helper struct with specific parameters and guarantees.
+    ///
+    /// If the parameters are invalid for any reason, this function will return a [`ParamError`].
     ///
     /// TODO more docs.
     ///
     /// See Section 3 of the original paper for more information on how the hash function works and
     /// behaves.
-    pub fn new(num_elements: usize, epsilon: f64, max_interval: u64) -> Option<Self> {
+    pub fn new(num_elements: usize, epsilon: f64, max_interval: u64) -> Result<Self, ParamError> {
         if epsilon <= 0.0 || 1.0 <= epsilon {
-            return None;
+            return Err(ParamError::InvalidEpsilon);
         }
 
         if max_interval > Self::max_range_interval(MAX_UNIVERSE_SIZE, num_elements, epsilon) {
-            return None;
+            return Err(ParamError::InvalidMaxInterval);
         }
 
         let upper = (num_elements as u64)
             .checked_mul(max_interval)
-            .expect("We should not have any overflow on calculating the reduced universe size.");
+            .ok_or(ParamError::Overflow)?;
         let lower = (1.0 / epsilon).floor() as u64;
 
-        let reduced_universe_size = upper
-            .checked_mul(lower)
-            .expect("We should not have any overflow on calculating the reduced universe size.");
+        let reduced_universe_size = upper.checked_mul(lower).ok_or(ParamError::Overflow)?;
 
         // Generate `p > r`.
         let p = gen_prime(1 + reduced_universe_size..MAX_UNIVERSE_SIZE);
@@ -54,7 +73,7 @@ impl OrderPreservingHasher {
         let c1 = gen_random(1..p);
         let c2 = gen_random(0..p);
 
-        Some(Self {
+        Ok(Self {
             c1,
             c2,
             p,
@@ -90,6 +109,8 @@ impl OrderPreservingHasher {
 
     /// A hash function that preserves locality and ordering modulo the reduced universe of integer
     /// items.
+    ///
+    /// TODO more docs.
     pub fn hash(&self, x: u64) -> u64 {
         let inner = x / self.r;
         let q = self.inner_hash(inner);
@@ -114,7 +135,7 @@ impl OrderPreservingHasher {
     ///
     /// # Panics
     ///
-    /// Panics if `epsilon` is not in between `0.0` and `1.0`.
+    /// Panics if `epsilon` is not strictly in between `0.0` and `1.0`.
     fn max_range_interval(universe_size: u64, num_elements: usize, epsilon: f64) -> u64 {
         assert!(
             0.0 < epsilon && epsilon < 1.0,
