@@ -8,9 +8,9 @@ by this paper: [Grafite: Taming Adversarial Queries with Optimal Range Filters](
 
 The authors of this paper also created a C++ implementation for Grafite, which can be found on one of the author's GitHub: [`grafite`](https://github.com/marcocosta97/grafite).
 
-The Grafite data structure relies on the Elias-Fano encoding of non-decreasing integer sequences. This library uses the [`vers_vecs`] library for their implementation of the encoding.
+The Grafite data structure relies on the Elias-Fano encoding of non-decreasing integer sequences, and this library uses the [`vers_vecs`] implementation of the encoding.
 
-# Usage
+# Examples
 
 ```rust
 let values = [1, 2, 3, 7, 8, 9, 15, 20];
@@ -32,3 +32,5 @@ assert!(rf.query(9..16));
 assert!(!rf.query(10..15));
 assert!(rf.query(10..16));
 ```
+
+# TODO
