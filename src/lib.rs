@@ -1,4 +1,4 @@
-//! TODO docs.
+#![doc = include_str!("../README.md")]
 
 pub mod hash;
 pub use crate::hash::OrderPreservingHasher;
@@ -52,7 +52,7 @@ impl RangeFilter {
     /// Checks if there are any elements within the given range among the original input set.
     pub fn query(&self, range: Range<u64>) -> bool {
         let start_hash = self.hasher.hash(range.start);
-        let end_hash = self.hasher.hash(range.end);
+        let end_hash = self.hasher.hash(range.end - 1);
 
         // If the start hash is greater than the end hash, then the range has wrapped around due to
         // the reduced universe. Thus we can just check the min and max hashes to see if there is an
