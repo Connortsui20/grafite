@@ -14,9 +14,10 @@ fn test_basic() {
     assert!(rf.query(3..5));
     assert!(!rf.query(4..5));
     assert!(!rf.query(4..6));
-    assert!(rf.query(4..7));
+    assert!(!rf.query(4..7));
     assert!(rf.query(4..8));
     assert!(rf.query(4..10));
     assert!(!rf.query(10..14));
-    assert!(rf.query(10..15));
+    assert!(!rf.query(10..15));
+    assert!(rf.query(10..16));
 }
