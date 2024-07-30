@@ -34,16 +34,6 @@ impl RangeFilter {
         }
     }
 
-    /// Gets the minimum hash value in the sorted hash codes.
-    fn min_hash(&self) -> u64 {
-        self.ef.get_unchecked(0)
-    }
-
-    /// Gets the maximum hash value in the sorted hash codes.
-    fn max_hash(&self) -> u64 {
-        self.ef.get_unchecked(self.ef.len() - 1)
-    }
-
     /// Checks if there are any elements within the given range among the original input set.
     pub fn query<R>(&self, range: R) -> bool
     where
@@ -81,6 +71,15 @@ impl RangeFilter {
         }
     }
 
+    /// Gets the minimum hash value in the sorted hash codes.
+    fn min_hash(&self) -> u64 {
+        self.ef.get_unchecked(0)
+    }
+
+    /// Gets the maximum hash value in the sorted hash codes.
+    fn max_hash(&self) -> u64 {
+        self.ef.get_unchecked(self.ef.len() - 1)
+    }
     /// Returns the false positive rate, epsilon.
     ///
     /// The false positive rate is determined by the hash function used, the maximum range of values
@@ -88,5 +87,13 @@ impl RangeFilter {
     pub fn false_positive_rate(&self, num_elements: usize, max_interval: u64) -> f64 {
         // The false positive rate is equal to nL / r.
         (num_elements as u64 * max_interval) as f64 / self.hasher.reduced_universe() as f64
+    }
+
+    /// Returns the amount of space required to store this `RangeFilter` on the heap.
+    ///
+    /// Internally, this function simply calls [`heap_size`](EliasFanoVec::heap_size) on the inner
+    /// [`EliasFanoVec`] structure.
+    pub fn heap_size(&self) -> usize {
+        self.ef.heap_size()
     }
 }
