@@ -81,6 +81,34 @@ impl OrderPreservingHasher {
         })
     }
 
+    /// Calculates the false positive rate of the [`RangeFilter`](crate::RangeFilter) given a
+    /// maximum budget of bits per key and the maximum range interval that will be queried.
+    ///
+    /// If `bits_per_key` is not in the range (2, 64], this function will return a [`ParamError`].
+    pub fn epsilon_with_budget(bits_per_key: u8, max_interval: u64) -> Result<f64, ParamError> {
+        if bits_per_key <= 2 || bits_per_key > 64 {
+            Err(ParamError::InvalidEpsilon)
+        } else {
+            // We calculate the false positive rate with `L / 2^(B-2)`.
+            Ok(max_interval as f64 / (1 << (bits_per_key - 2)) as f64)
+        }
+    }
+
+    /// Creates a hash function given a budget of `bits_per_key` bits per key for every distinct
+    /// value that is input into the range filter.
+    ///
+    /// Internally, this function will just calculate the false positive rate via
+    /// `epsilon_with_budget` and use that `epsilon` as the parameter for the [`new`](Self::new)
+    /// method above.
+    pub fn new_with_budget(
+        num_elements: usize,
+        bits_per_key: u8,
+        max_interval: u64,
+    ) -> Result<Self, ParamError> {
+        let epsilon = Self::epsilon_with_budget(bits_per_key, max_interval)?;
+        Self::new(num_elements, epsilon, max_interval)
+    }
+
     /// Creates a new hash function helper struct where the caller can pass in a custom reduced
     /// universe size.
     ///
