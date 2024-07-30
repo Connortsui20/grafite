@@ -13,10 +13,11 @@ pub const MAX_UNIVERSE_SIZE: u64 = u64::MAX;
 #[derive(Debug, Clone, Copy)]
 pub enum ParamError {
     /// If the input `epsilon` is not strictly in between `0.0` and `1.0`.
-    InvalidEpsilon,
+    InvalidEpsilon(f64),
     /// If the maximum interval is too large.
-    InvalidMaxInterval,
-    /// If overflow occurs in the calculation of the reduced universe size.
+    InvalidMaxInterval(u64),
+    /// If overflow occurs in the calculation of the reduced universe size, or if the bits used per
+    /// key is invalid.
     Overflow,
 }
 
@@ -52,11 +53,11 @@ impl OrderPreservingHasher {
     /// behaves.
     pub fn new(num_elements: usize, epsilon: f64, max_interval: u64) -> Result<Self, ParamError> {
         if epsilon <= 0.0 || 1.0 <= epsilon {
-            return Err(ParamError::InvalidEpsilon);
+            return Err(ParamError::InvalidEpsilon(epsilon));
         }
 
         if max_interval > Self::max_range_interval(MAX_UNIVERSE_SIZE, num_elements, epsilon) {
-            return Err(ParamError::InvalidMaxInterval);
+            return Err(ParamError::InvalidMaxInterval(max_interval));
         }
 
         let upper = (num_elements as u64)
@@ -87,7 +88,7 @@ impl OrderPreservingHasher {
     /// If `bits_per_key` is not in the range (2, 64], this function will return a [`ParamError`].
     pub fn epsilon_with_budget(bits_per_key: u8, max_interval: u64) -> Result<f64, ParamError> {
         if bits_per_key <= 2 || bits_per_key > 64 {
-            Err(ParamError::InvalidEpsilon)
+            Err(ParamError::Overflow)
         } else {
             // We calculate the false positive rate with `L / 2^(B-2)`.
             Ok(max_interval as f64 / (1 << (bits_per_key - 2)) as f64)
