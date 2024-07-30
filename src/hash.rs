@@ -12,9 +12,11 @@ pub const MAX_UNIVERSE_SIZE: u64 = u64::MAX;
 /// reason.
 #[derive(Debug, Clone, Copy)]
 pub enum ParamError {
-    /// If the input `epsilon` is not strictly in between `0.0` and `1.0`.
+    /// If the input `epsilon` is not strictly in between `0.0` and `1.0`. Stores the invalid
+    /// `epsilon`.
     InvalidEpsilon(f64),
-    /// If the maximum interval is too large.
+    /// If the input maximum interval is too large. Stores the maximum range interval (note that
+    /// this is _not_ the same as the input interval that raised the error).
     InvalidMaxInterval(u64),
     /// If overflow occurs in the calculation of the reduced universe size, or if the bits used per
     /// key is invalid.
@@ -56,8 +58,9 @@ impl OrderPreservingHasher {
             return Err(ParamError::InvalidEpsilon(epsilon));
         }
 
-        if max_interval > Self::max_range_interval(MAX_UNIVERSE_SIZE, num_elements, epsilon) {
-            return Err(ParamError::InvalidMaxInterval(max_interval));
+        let max_range_interval = Self::max_range_interval(MAX_UNIVERSE_SIZE, num_elements, epsilon);
+        if max_interval > max_range_interval {
+            return Err(ParamError::InvalidMaxInterval(max_range_interval));
         }
 
         let upper = (num_elements as u64)
