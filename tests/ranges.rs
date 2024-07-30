@@ -1,4 +1,4 @@
-use grafite::{hash::OrderPreservingHasher, RangeFilter};
+use grafite::{OrderPreservingHasher, RangeFilter};
 
 #[test]
 fn test_basic() {
