@@ -3,9 +3,14 @@ use rand::prelude::*;
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const NUM_ITERATIONS: usize = 100_000_000;
+const NUM_ITERATIONS: usize = 1_000_000_000;
 
 fn bench(num_elements: usize, bits_per_key: u8, max_interval: u64) {
+    println!(
+        "\n\nBeginning benchmark of {} elements, {} bits per key, anx a maximum query interval of {}\n\n",
+        num_elements, bits_per_key, max_interval
+    );
+
     let mut values: Vec<u64> = (0..num_elements)
         .into_par_iter()
         .map(|_| thread_rng().gen())
