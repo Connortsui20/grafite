@@ -14,3 +14,4 @@ categories = ["database-implementations", "data-structures", "algorithms"]
 miller_rabin = "1.1"
 rand = "0.8"
 vers-vecs = "1.4"
+rayon = "1.10"
