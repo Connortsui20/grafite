@@ -1,12 +1,13 @@
 [package]
 name = "grafite"
 description = "The Grafite Range Filter."
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Connor Tsui"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Connortsui20/grafite"
+docs = "https://docs.rs/grafite/latest/grafite/"
 keywords = ["filter", "range", "bloom", "search", "succinct"]
 categories = ["database-implementations", "data-structures", "algorithms"]
 
